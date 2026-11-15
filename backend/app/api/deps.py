@@ -1,4 +1,5 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
+from fastapi import Header, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db as _get_db
 import redis.asyncio as aioredis
@@ -19,4 +20,18 @@ async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
     try:
         yield client
     finally:
-        await client.close()
+        await client.aclose()
+
+
+async def verify_admin_key(
+    x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
+    admin_key: Optional[str] = Query(None),
+) -> str:
+    """Verifies that the caller possesses the valid admin secret key."""
+    provided_key = x_admin_key or admin_key
+    if not provided_key or provided_key.strip() != settings.ADMIN_SECRET_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Invalid or missing administrator secret key",
+        )
+    return provided_key

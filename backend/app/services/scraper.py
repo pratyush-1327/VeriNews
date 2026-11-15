@@ -3,6 +3,8 @@ import logging
 from typing import Dict, Any, Optional
 import httpx
 import trafilatura
+from app.core.config import settings
+from app.core.ssrf import validate_url_ssrf
 
 logger = logging.getLogger("verinews.scraper")
 
@@ -26,7 +28,11 @@ class ScraperService:
     ) -> Dict[str, Any]:
         """
         Fetches web page HTML and extracts clean text using trafilatura along with top image.
+        Protected by SSRF guardrails and maximum payload limits.
         """
+        # Enforce SSRF validation
+        safe_url = await validate_url_ssrf(url)
+
         html_content = ""
         extracted_text = ""
         image_url: Optional[str] = None
@@ -34,14 +40,32 @@ class ScraperService:
         try:
             async with httpx.AsyncClient(
                 headers=cls.HEADERS,
-                timeout=6.0,
+                timeout=8.0,
                 follow_redirects=True,
+                max_redirects=5,
             ) as client:
-                resp = await client.get(url)
+                # Custom hook to validate redirects against SSRF
+                async def response_hook(response: httpx.Response):
+                    if response.is_redirect:
+                        next_url = response.headers.get("Location")
+                        if next_url:
+                            # Re-validate target URL
+                            resolved_next = response.url.join(next_url)
+                            await validate_url_ssrf(str(resolved_next))
+
+                client.event_hooks["response"] = [response_hook]
+
+                resp = await client.get(safe_url)
                 if resp.status_code == 200:
-                    html_content = resp.text
+                    # Enforce max content length to protect against memory exhaustion
+                    content_bytes = resp.content[: settings.MAX_SCRAPE_BYTES]
+                    html_content = content_bytes.decode("utf-8", errors="replace")
         except Exception as e:
             logger.warning(f"Failed to fetch HTML for {url}: {e}")
+            # If it's an SSRF HTTPException, let it propagate so API caller gets a clean 400
+            from fastapi import HTTPException
+            if isinstance(e, HTTPException):
+                raise e
 
         if html_content:
             # 1. Extract clean text body via trafilatura

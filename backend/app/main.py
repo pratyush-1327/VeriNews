@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
@@ -77,6 +78,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include API v1 Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.get("/admin", include_in_schema=False)
+async def admin_portal():
+    return FileResponse("static/admin.html")
 
 
 @app.get("/", tags=["Root"])

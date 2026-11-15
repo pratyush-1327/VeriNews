@@ -20,6 +20,8 @@ from app.services.evidence_retriever import EvidenceRetriever
 from app.services.nli_evaluator import NLIEvaluator
 from app.services.debunk_card import DebunkCardGenerator
 
+from app.core.rate_limit import verify_rate_limiter
+
 logger = logging.getLogger("verinews.verify")
 router = APIRouter()
 
@@ -29,7 +31,12 @@ def compute_claim_hash(text: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
-@router.post("", response_model=VerificationResponse, summary="Submit a claim for verification")
+@router.post(
+    "",
+    response_model=VerificationResponse,
+    dependencies=[Depends(verify_rate_limiter)],
+    summary="Submit a claim for verification",
+)
 async def verify_claim(
     request: VerifyRequest,
     db: AsyncSession = Depends(get_db),

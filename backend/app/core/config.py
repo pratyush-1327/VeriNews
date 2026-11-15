@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     GOOGLE_FACT_CHECK_API_KEY: str = ""
     TAVILY_API_KEY: str = ""
 
+    # Security & Admin for Phase 5
+    ADMIN_SECRET_KEY: str = "verinews-admin-secret-2026"
+    RATE_LIMIT_PER_MINUTE: int = 30
+    MAX_SCRAPE_BYTES: int = 5 * 1024 * 1024  # 5MB max payload
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

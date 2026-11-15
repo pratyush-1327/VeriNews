@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VeriNews — Fact-Checker Review Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e1418;
+      --surface-low: #161c20;
+      --surface: #1b2125;
+      --surface-high: #252b30;
+      --surface-highest: #30363c;
+      --primary: #9ecaff;
+      --primary-container: #004978;
+      --on-primary: #003256;
+      --text: #e0e3e8;
+      --text-muted: #8c9199;
+      --outline: #42474e;
+      
+      --true: #34d399;
+      --true-bg: rgba(52, 211, 153, 0.15);
+      --misleading: #fb923c;
+      --misleading-bg: rgba(251, 146, 60, 0.15);
+      --fake: #f87171;
+      --fake-bg: rgba(248, 113, 113, 0.15);
+      --satire: #c084fc;
+      --satire-bg: rgba(192, 132, 252, 0.15);
+      --unverified: #94a3b8;
+      --unverified-bg: rgba(148, 163, 184, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background-color: var(--surface-low);
+      border-bottom: 1px solid var(--outline);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      background: var(--primary);
+      color: var(--on-primary);
+      font-weight: 900;
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 14px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--primary-container);
+      color: var(--primary);
+      padding: 3px 8px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .key-input-wrapper {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      padding: 4px 12px;
+      gap: 8px;
+    }
+
+    .key-input {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      width: 220px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: var(--on-primary);
+      border: none;
+      border-radius: 20px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--surface-high);
+      color: var(--text);
+      border: 1px solid var(--outline);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-highest);
+    }
+
+    .btn-danger {
+      background: rgba(248, 113, 113, 0.2);
+      color: var(--fake);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+    }
+
+    /* Main Container */
+    main {
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 28px 24px;
+      flex: 1;
+    }
+
+    /* KPI Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    /* Filter & Search Bar */
+    .toolbar {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab-chip {
+      background: var(--surface-high);
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-chip:hover {
+      color: var(--text);
+    }
+
+    .tab-chip.active {
+      background: var(--primary-container);
+      color: var(--primary);
+      border-color: rgba(158, 202, 255, 0.4);
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: var(--surface-high);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      padding: 6px 14px;
+      width: 280px;
+    }
+
+    .search-input {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+    }
+
+    /* Claims Table */
+    .table-container {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 24px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface-low);
+      padding: 14px 18px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--outline);
+    }
+
+    td {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Verdict Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    .badge-true { background: var(--true-bg); color: var(--true); border: 1px solid var(--true); }
+    .badge-misleading { background: var(--misleading-bg); color: var(--misleading); border: 1px solid var(--misleading); }
+    .badge-fake { background: var(--fake-bg); color: var(--fake); border: 1px solid var(--fake); }
+    .badge-satire { background: var(--satire-bg); color: var(--satire); border: 1px solid var(--satire); }
+    .badge-unverified { background: var(--unverified-bg); color: var(--unverified); border: 1px solid var(--unverified); }
+
+    /* Truth Score Bar */
+    .score-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 120px;
+    }
+
+    .score-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .score-text {
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 32px;
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 28px;
+      max-width: 680px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .verdict-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px;
+    }
+
+    .verdict-btn {
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--outline);
+      background: var(--surface-high);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .verdict-btn.selected {
+      border-color: var(--primary);
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+
+    .range-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .range-input {
+      flex: 1;
+      accent-color: var(--primary);
+    }
+
+    .range-val {
+      font-size: 16px;
+      font-weight: 800;
+      min-width: 45px;
+    }
+
+    .form-textarea {
+      width: 100%;
+      background: var(--surface-high);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      padding: 12px;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      resize: vertical;
+      min-height: 90px;
+      outline: none;
+    }
+
+    .form-textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface-high);
+      color: var(--text);
+      border: 1px solid var(--outline);
+      padding: 12px 20px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+      z-index: 200;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .toast.show {
+      display: block;
+      animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-logo">VN</span>
+      <span class="brand-title">VeriNews</span>
+      <span class="brand-badge">ADMIN PORTAL</span>
+    </div>
+    <div class="header-actions">
+      <div class="key-input-wrapper">
+        <span style="font-size: 14px;">🔑</span>
+        <input type="password" id="adminKey" class="key-input" placeholder="Enter Admin Secret Key" value="verinews-admin-secret-2026">
+      </div>
+      <button class="btn" onclick="loadAll()">
+        <span>🔄</span> Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main>
+    <!-- Metrics Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total Investigated</span>
+        <span class="stat-value" id="statTotalClaims">0</span>
+      </div>
+      <div class="stat-card" style="border-left: 4px solid var(--unverified);">
+        <span class="stat-label">Unverified (Pending Review)</span>
+        <span class="stat-value" id="statUnverified" style="color: var(--unverified);">0</span>
+      </div>
+      <div class="stat-card" style="border-left: 4px solid var(--fake);">
+        <span class="stat-label">Debunked Fake</span>
+        <span class="stat-value" id="statFake" style="color: var(--fake);">0</span>
+      </div>
+      <div class="stat-card" style="border-left: 4px solid var(--misleading);">
+        <span class="stat-label">Misleading Rumors</span>
+        <span class="stat-value" id="statMisleading" style="color: var(--misleading);">0</span>
+      </div>
+      <div class="stat-card" style="border-left: 4px solid var(--true);">
+        <span class="stat-label">Verified True</span>
+        <span class="stat-value" id="statTrue" style="color: var(--true);">0</span>
+      </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="toolbar">
+      <div class="tabs">
+        <button class="tab-chip active" onclick="setFilter(null, this)">All Claims</button>
+        <button class="tab-chip" onclick="setFilter('UNVERIFIED', this)">⚠️ Unverified</button>
+        <button class="tab-chip" onclick="setFilter('FAKE', this)">❌ Fake</button>
+        <button class="tab-chip" onclick="setFilter('MISLEADING', this)">⚠️ Misleading</button>
+        <button class="tab-chip" onclick="setFilter('TRUE', this)">✅ True</button>
+        <button class="tab-chip" onclick="setFilter('SATIRE', this)">🎭 Satire</button>
+      </div>
+
+      <div class="search-box">
+        <span style="margin-right: 8px;">🔍</span>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search claims..." onkeyup="handleSearch(event)">
+      </div>
+    </div>
+
+    <!-- Claims Table -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 60px;">ID</th>
+            <th>Investigated Claim</th>
+            <th style="width: 150px;">Verdict</th>
+            <th style="width: 140px;">Truth Score</th>
+            <th style="width: 90px;">Citations</th>
+            <th style="width: 120px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="claimsTableBody">
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+              Loading verified dossiers...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Review / Override Modal -->
+  <div class="modal-overlay" id="overrideModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Human Fact-Checker Review</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Investigated Claim</span>
+        <div id="modalClaimText" style="font-style: italic; background: var(--surface-high); padding: 14px; border-radius: 14px; font-size: 14px; border: 1px solid var(--outline);">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Select Human-Verified Verdict</span>
+        <div class="verdict-options">
+          <button type="button" class="verdict-btn" onclick="selectVerdict('TRUE', this)">✅ TRUE</button>
+          <button type="button" class="verdict-btn" onclick="selectVerdict('MISLEADING', this)">⚠️ MISLEADING</button>
+          <button type="button" class="verdict-btn" onclick="selectVerdict('FAKE', this)">❌ FAKE</button>
+          <button type="button" class="verdict-btn" onclick="selectVerdict('SATIRE', this)">🎭 SATIRE</button>
+          <button type="button" class="verdict-btn" onclick="selectVerdict('UNVERIFIED', this)">🔘 UNVERIFIED</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Truth Score (0% – 100%)</span>
+        <div class="range-wrapper">
+          <input type="range" id="modalScoreRange" class="range-input" min="0" max="100" value="50" oninput="document.getElementById('modalScoreVal').innerText = this.value + '%'">
+          <span id="modalScoreVal" class="range-val">50%</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Takeaway Facts (1 per line for Debunk Card)</span>
+        <textarea id="modalBullets" class="form-textarea" placeholder="• Fact point 1&#10;• Fact point 2&#10;• Fact point 3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Reviewer Notes (Internal Audit)</span>
+        <input type="text" id="modalNotes" class="search-input" style="background: var(--surface-high); padding: 10px; border-radius: 12px; border: 1px solid var(--outline);" placeholder="e.g. Verified via official government press release">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-danger" onclick="deleteCurrentClaim()">Delete Claim</button>
+        <button class="btn" onclick="saveOverride()">Save & Regenerate Card</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let currentVerdictFilter = null;
+    let currentClaims = [];
+    let selectedClaimId = null;
+    let selectedVerdict = 'UNVERIFIED';
+
+    function getAdminKey() {
+      return document.getElementById('adminKey').value.trim();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/v1/admin/stats', {
+          headers: { 'X-Admin-Key': getAdminKey() }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('statTotalClaims').innerText = data.total_claims;
+          document.getElementById('statUnverified').innerText = data.claims_by_verdict['UNVERIFIED'] || 0;
+          document.getElementById('statFake').innerText = data.claims_by_verdict['FAKE'] || 0;
+          document.getElementById('statMisleading').innerText = data.claims_by_verdict['MISLEADING'] || 0;
+          document.getElementById('statTrue').innerText = data.claims_by_verdict['TRUE'] || 0;
+        }
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+      }
+    }
+
+    async function loadClaims() {
+      const search = document.getElementById('searchInput').value.trim();
+      let url = '/api/v1/admin/claims?limit=50';
+      if (currentVerdictFilter) url += `&verdict=${currentVerdictFilter}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: { 'X-Admin-Key': getAdminKey() }
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        currentClaims = data.claims;
+        renderClaimsTable(currentClaims);
+      } catch (e) {
+        document.getElementById('claimsTableBody').innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--fake); padding: 40px;">
+              Error loading claims. Check your Admin Secret Key above.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderClaimsTable(claims) {
+      const tbody = document.getElementById('claimsTableBody');
+      if (!claims || claims.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+              No claims found matching this criteria.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = claims.map(c => {
+        const verdictLower = (c.verdict || 'unverified').toLowerCase();
+        const scoreColor = verdictLower === 'true' ? 'var(--true)' :
+                           verdictLower === 'fake' ? 'var(--fake)' :
+                           verdictLower === 'misleading' ? 'var(--misleading)' :
+                           verdictLower === 'satire' ? 'var(--satire)' : 'var(--unverified)';
+
+        return `
+          <tr>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">#${c.id}</td>
+            <td style="font-weight: 600; max-width: 420px; line-height: 1.3;">
+              "${escapeHtml(c.claim_text)}"
+            </td>
+            <td>
+              <span class="badge badge-${verdictLower}">
+                ${c.verdict}
+              </span>
+            </td>
+            <td>
+              <div class="score-container">
+                <div class="score-bar">
+                  <div class="score-fill" style="width: ${c.truth_score}%; background: ${scoreColor};"></div>
+                </div>
+                <span class="score-text" style="color: ${scoreColor};">${c.truth_score}%</span>
+              </div>
+            </td>
+            <td style="color: var(--text-muted); font-size: 13px;">${c.evidence_sources.length} sources</td>
+            <td>
+              <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="openOverrideModal(${c.id})">
+                ✏️ Review
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function setFilter(verdict, el) {
+      currentVerdictFilter = verdict;
+      document.querySelectorAll('.tab-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      loadClaims();
+    }
+
+    function handleSearch(e) {
+      if (e.key === 'Enter') {
+        loadClaims();
+      }
+    }
+
+    function selectVerdict(v, el) {
+      selectedVerdict = v;
+      document.querySelectorAll('.verdict-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function openOverrideModal(claimId) {
+      const claim = currentClaims.find(c => c.id === claimId);
+      if (!claim) return;
+
+      selectedClaimId = claimId;
+      selectedVerdict = claim.verdict;
+
+      document.getElementById('modalClaimText').innerText = `"${claim.claim_text}"`;
+      document.getElementById('modalScoreRange').value = claim.truth_score;
+      document.getElementById('modalScoreVal').innerText = claim.truth_score + '%';
+      document.getElementById('modalBullets').value = claim.explanation_bullets.map(b => b.startsWith('•') ? b : `• ${b}`).join('\n');
+      document.getElementById('modalNotes').value = '';
+
+      // Set active verdict button
+      document.querySelectorAll('.verdict-btn').forEach(b => {
+        if (b.innerText.includes(claim.verdict)) {
+          b.classList.add('selected');
+        } else {
+          b.classList.remove('selected');
+        }
+      });
+
+      document.getElementById('overrideModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('overrideModal').classList.remove('active');
+      selectedClaimId = null;
+    }
+
+    async function saveOverride() {
+      if (!selectedClaimId) return;
+
+      const bulletsRaw = document.getElementById('modalBullets').value.trim();
+      const bullets = bulletsRaw.split('\n')
+        .map(b => b.replace(/^[\s\-\*\•\d\.\)]+\s*/, '').trim())
+        .filter(b => b.length > 0);
+
+      const payload = {
+        verdict: selectedVerdict,
+        truth_score: parseInt(document.getElementById('modalScoreRange').value),
+        explanation_bullets: bullets.length > 0 ? bullets : ['Human fact-checker reviewed claim.'],
+        reviewer_notes: document.getElementById('modalNotes').value.trim() || null
+      };
+
+      try {
+        const res = await fetch(`/api/v1/admin/claims/${selectedClaimId}/override`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': getAdminKey()
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          showToast('Verdict successfully overridden and debunk card regenerated!');
+          closeModal();
+          loadAll();
+        } else {
+          const err = await res.json();
+          alert('Failed to override: ' + (err.detail || res.statusText));
+        }
+      } catch (e) {
+        alert('Error saving override: ' + e);
+      }
+    }
+
+    async function deleteCurrentClaim() {
+      if (!selectedClaimId) return;
+      if (!confirm('Are you sure you want to permanently delete this claim from the database and cache?')) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/v1/admin/claims/${selectedClaimId}`, {
+          method: 'DELETE',
+          headers: { 'X-Admin-Key': getAdminKey() }
+        });
+
+        if (res.ok) {
+          showToast('Claim deleted successfully.');
+          closeModal();
+          loadAll();
+        } else {
+          alert('Delete failed');
+        }
+      } catch (e) {
+        alert('Error: ' + e);
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function loadAll() {
+      loadStats();
+      loadClaims();
+    }
+
+    // Auto-load on page ready
+    window.addEventListener('DOMContentLoaded', loadAll);
+  </script>
+</body>
+</html>
