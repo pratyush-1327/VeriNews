@@ -48,6 +48,8 @@ services:
       - ENVIRONMENT=development
       - API_V1_STR=/api/v1
       - PROJECT_NAME=VeriNews API
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
     depends_on:
       db:
         condition: service_healthy

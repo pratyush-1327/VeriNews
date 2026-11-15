@@ -8,6 +8,7 @@ from app.models.source import NewsScope, Source
 from app.models.article import Article
 from app.schemas.article import ArticleFeedResponse, ArticleResponse, ArticleCreate
 from app.core.config import settings
+from app.services.ingestion import IngestionService, LATEST_INGESTION_STATUS
 
 router = APIRouter()
 
@@ -142,3 +143,29 @@ async def create_article(
         source_name=source.name,
         created_at=article.created_at,
     )
+
+
+@router.post("/ingest", summary="Trigger news ingestion from whitelisted RSS feeds")
+async def trigger_ingestion(
+    limit_per_source: int = Query(5, ge=1, le=20, description="Max articles to ingest per source"),
+    scope: Optional[NewsScope] = Query(None, description="Filter ingestion to a specific scope"),
+    city: Optional[str] = Query(None, description="Filter ingestion to a specific city"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Triggers an on-demand ingestion run across configured news wires.
+    Articles are extracted, summarized via Gemini 3.8 Flash into 60-word briefs, and saved.
+    """
+    summary = await IngestionService.run_ingestion(
+        db=db,
+        limit_per_source=limit_per_source,
+        scope_filter=scope,
+        city_filter=city,
+    )
+    return summary
+
+
+@router.get("/ingest/status", summary="Get status of latest ingestion run")
+async def get_ingestion_status() -> Dict[str, Any]:
+    """Returns status and metrics of the latest ingestion execution."""
+    return LATEST_INGESTION_STATUS

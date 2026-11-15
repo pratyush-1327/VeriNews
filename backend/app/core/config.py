@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     # API Keys for Phase 2 & 3
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.8-flash"
     GOOGLE_FACT_CHECK_API_KEY: str = ""
     TAVILY_API_KEY: str = ""
 
