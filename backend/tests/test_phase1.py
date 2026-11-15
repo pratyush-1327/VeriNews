@@ -110,7 +110,7 @@ async def test_city_validation():
 
 @pytest.mark.asyncio
 async def test_verification_and_caching():
-    async with httpx.AsyncClient(base_url=BASE_URL) as client:
+    async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
         claim_payload = {
             "text": "Breaking: UNESCO declares Indian National Anthem the best in the world for 2026",
         }

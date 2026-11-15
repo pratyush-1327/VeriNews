@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import uuid
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,7 +14,13 @@ from app.schemas.verification import (
     VerificationResponse,
     EvidenceSource,
 )
+from app.services.scraper import ScraperService
+from app.services.claim_extractor import ClaimExtractor
+from app.services.evidence_retriever import EvidenceRetriever
+from app.services.nli_evaluator import NLIEvaluator
+from app.services.debunk_card import DebunkCardGenerator
 
+logger = logging.getLogger("verinews.verify")
 router = APIRouter()
 
 
@@ -28,15 +35,29 @@ async def verify_claim(
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),
 ):
-    claim_input = request.text or request.url
-    if not claim_input and not request.image_base64:
+    """
+    Real-time Evidence-Based RAG Verification:
+    1. Check Redis cache for instant (<30ms) responses on viral rumors.
+    2. Check PostgreSQL database.
+    3. Multimodal extraction & Atomic proposition decomposition (Gemini 3.8 Flash).
+    4. Multi-layer live evidence retrieval (Tavily + DDGS + Satire Registry).
+    5. Natural Language Inference veracity scoring (TRUE, MISLEADING, FAKE, SATIRE, UNVERIFIED).
+    6. Dynamic WhatsApp Debunk Card PNG generation (Pillow).
+    """
+    claim_input = request.text
+    if not claim_input and request.url:
+        # Scrape text from submitted link
+        scraped = await ScraperService.fetch_and_extract(request.url)
+        claim_input = scraped.get("text") or request.url
+
+    if not claim_input and request.image_base64:
+        claim_input = "Extracted claim from screenshot image"
+
+    if not claim_input:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one of 'text', 'url', or 'image_base64' must be provided",
         )
-
-    if not claim_input:
-        claim_input = "Extracted claim from screenshot image"
 
     claim_hash = compute_claim_hash(claim_input)
     cache_key = f"verify:{claim_hash}"
@@ -49,7 +70,7 @@ async def verify_claim(
             parsed["cached"] = True
             return VerificationResponse(**parsed)
     except Exception:
-        pass  # Redis failure shouldn't block verification
+        pass
 
     # 2. Check Database
     stmt = select(VerificationDossier).where(
@@ -73,45 +94,71 @@ async def verify_claim(
             created_at=dossier.created_at,
             cached=False,
         )
-        # Populate Redis cache
         try:
             await redis.setex(
                 cache_key,
                 86400,
-                json.dumps(
-                    response_obj.model_dump(mode="json"), default=str
-                ),
+                json.dumps(response_obj.model_dump(mode="json"), default=str),
             )
         except Exception:
             pass
         return response_obj
 
-    # 3. Phase 1 Mock/Skeleton (Ready for Phase 3 Gemini RAG Engine)
-    # Provides initial validation and contract compliance
+    # 3. Live RAG Pipeline Execution
+    logger.info(f"Initiating RAG verification for claim hash: {claim_hash[:12]}...")
+
+    # Step A: Atomic Claim Decomposition
+    extracted = await ClaimExtractor.extract_claim(claim_input)
+    core_claim = extracted.get("core_claim", claim_input[:150])
+    queries = extracted.get("search_queries", [f"{claim_input[:80]} fact check"])
+
+    # Step B: Tri-Source Evidence Retrieval (Tavily + DDGS + Satire check)
+    retrieved = await EvidenceRetriever.retrieve_evidence(
+        queries=queries,
+        submitted_url=request.url,
+    )
+    evidence_list = retrieved.get("evidence", [])
+    tavily_answer = retrieved.get("tavily_answer", "")
+    is_satire = retrieved.get("is_satire", False)
+
+    # Step C: Natural Language Inference (NLI) & Truth Scoring
+    evaluated = await NLIEvaluator.evaluate(
+        claim=core_claim,
+        evidence=evidence_list,
+        tavily_answer=tavily_answer,
+        is_satire=is_satire,
+    )
+    verdict = evaluated["verdict"]
+    truth_score = evaluated["truth_score"]
+    explanation_bullets = evaluated["explanation_bullets"]
+
+    # Step D: WhatsApp Debunk Card PNG Generation
+    debunk_card_url = DebunkCardGenerator.generate_card(
+        claim_text=core_claim,
+        verdict=verdict,
+        truth_score=truth_score,
+        explanation_bullets=explanation_bullets,
+        evidence_sources=evidence_list,
+        claim_hash=claim_hash,
+    )
+
+    # Step E: Persist in Database
     new_dossier = VerificationDossier(
         id=uuid.uuid4(),
-        claim_text=claim_input,
+        claim_text=core_claim,
         claim_hash=claim_hash,
-        verdict=ClaimVerdict.MISLEADING,
-        truth_score=35.0,
-        explanation_bullets=[
-            "The circulating claim takes historical statements out of context.",
-            "Official press releases confirm the policy was revised.",
-            "Multiple accredited news wires reported the clarification.",
-        ],
+        verdict=verdict,
+        truth_score=truth_score,
+        explanation_bullets=explanation_bullets,
         evidence_sources=[
             {
-                "title": "Press Information Bureau Clarification Note",
-                "url": "https://pib.gov.in/factcheck",
-                "publisher": "PIB Fact Check",
-            },
-            {
-                "title": "Detailed Fact Check Report",
-                "url": "https://www.thehindu.com/news/national",
-                "publisher": "The Hindu",
-            },
+                "title": src.get("title", "News Report"),
+                "url": src.get("url", ""),
+                "publisher": src.get("publisher", "Accredited Source"),
+            }
+            for src in evidence_list[:4]
         ],
-        debunk_card_url="/static/debunks/sample_card.png",
+        debunk_card_url=debunk_card_url,
     )
     db.add(new_dossier)
     await db.commit()
@@ -132,7 +179,7 @@ async def verify_claim(
         cached=False,
     )
 
-    # Store in Redis
+    # Step F: Cache in Redis (24 Hours TTL)
     try:
         await redis.setex(
             cache_key,

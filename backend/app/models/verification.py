@@ -12,6 +12,7 @@ class ClaimVerdict(str, enum.Enum):
     MISLEADING = "MISLEADING"
     SATIRE = "SATIRE"
     FAKE = "FAKE"
+    UNVERIFIED = "UNVERIFIED"
 
 
 class VerificationDossier(Base):

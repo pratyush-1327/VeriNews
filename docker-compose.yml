@@ -50,6 +50,7 @@ services:
       - PROJECT_NAME=VeriNews API
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-tvly-E4WJn-AhXSCJX4KJYmQBvgifCTghbKgnB9nFzIE0x0raXlFG}
     depends_on:
       db:
         condition: service_healthy
