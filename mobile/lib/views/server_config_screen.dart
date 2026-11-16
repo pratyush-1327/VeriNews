@@ -461,11 +461,13 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
             children: [
               Icon(Icons.wifi_find_rounded, color: theme.colorScheme.primary, size: 22),
               const SizedBox(width: 8),
-              Text(
-                'Wi-Fi & Physical Device Connection Guide',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
+              Expanded(
+                child: Text(
+                  'Wi-Fi & Physical Device Connection Guide',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
