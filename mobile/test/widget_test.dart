@@ -50,7 +50,7 @@ void main() {
       };
 
       final article = Article.fromJson(json);
-      expect(article.id, 1);
+      expect(article.id, '1');
       expect(article.title, 'Test Headline');
       expect(article.bullets.length, 3);
       expect(article.bullets[0], 'First fact point.');
@@ -146,14 +146,14 @@ void main() {
     testWidgets('Renders headline, bullets, and actions', (tester) async {
       bool factCheckTapped = false;
       final article = Article(
-        id: 1,
+        id: '1',
         title: 'Exciting AI Model Released Today',
         summary60Words: '• New model achieves top benchmark.\n• Completely open-weights.\n• Available immediately.',
         url: 'https://example.com/ai-model',
         publishedAt: DateTime.now().subtract(const Duration(hours: 2)),
         scope: 'national',
         cityTag: 'delhi',
-        sourceId: 5,
+        sourceId: '5',
         sourceName: 'PIB FactCheck',
         createdAt: DateTime.now(),
       );

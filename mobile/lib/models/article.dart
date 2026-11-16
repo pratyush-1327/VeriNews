@@ -1,5 +1,5 @@
 class Article {
-  final int id;
+  final String id;
   final String title;
   final String summary60Words;
   final String url;
@@ -7,7 +7,7 @@ class Article {
   final DateTime publishedAt;
   final String scope;
   final String? cityTag;
-  final int sourceId;
+  final String sourceId;
   final String sourceName;
   final DateTime createdAt;
 
@@ -68,7 +68,7 @@ class Article {
 
   factory Article.fromJson(Map<String, dynamic> json) {
     return Article(
-      id: json['id'] as int? ?? 0,
+      id: json['id']?.toString() ?? '',
       title: json['title'] as String? ?? 'Untitled Article',
       summary60Words: json['summary_60_words'] as String? ?? '',
       url: json['url'] as String? ?? '',
@@ -78,7 +78,7 @@ class Article {
           : DateTime.now(),
       scope: json['scope'] as String? ?? 'national',
       cityTag: json['city_tag'] as String?,
-      sourceId: json['source_id'] as int? ?? 0,
+      sourceId: json['source_id']?.toString() ?? '',
       sourceName: json['source_name'] as String? ?? 'Verified Source',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
