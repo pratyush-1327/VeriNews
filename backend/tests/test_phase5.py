@@ -1,5 +1,6 @@
 import pytest
 import os
+import uuid
 import httpx
 from fastapi import HTTPException
 from app.core.config import settings
@@ -97,14 +98,13 @@ async def test_admin_claim_override_and_cache_invalidation():
     4. Verify GET /api/v1/admin/claims/{claim_id} serves the updated record.
     """
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
-        # 1. Fetch recent claims
-        recents_res = await client.get("/api/v1/verify/recent?limit=1")
-        assert recents_res.status_code == 200
-        recents = recents_res.json()
-        assert len(recents) > 0
-
-        target = recents[0]
-        claim_id = target["id"]
+        # 1. Create a dedicated claim for admin override test
+        claim_res = await client.post(
+            "/api/v1/verify",
+            json={"text": f"Dedicated test claim for admin override test {uuid.uuid4().hex[:6]}"},
+        )
+        assert claim_res.status_code == 200
+        claim_id = claim_res.json()["id"]
 
         # 2. Human fact-checker overrides verdict
         override_payload = {
@@ -147,7 +147,15 @@ async def test_admin_claim_override_and_cache_invalidation():
 @pytest.mark.asyncio
 async def test_admin_claim_list_and_delete():
     """Verify admin claim listing with filters and deletion."""
-    async with httpx.AsyncClient(base_url=BASE_URL, timeout=10.0) as client:
+    async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
+        # Create dedicated claim to delete
+        claim_res = await client.post(
+            "/api/v1/verify",
+            json={"text": f"Dedicated test claim for admin delete test {uuid.uuid4().hex[:6]}"},
+        )
+        assert claim_res.status_code == 200
+        claim_id = claim_res.json()["id"]
+
         # List claims
         list_res = await client.get(
             "/api/v1/admin/claims?limit=20",
@@ -159,10 +167,7 @@ async def test_admin_claim_list_and_delete():
         claims = data["claims"]
         assert len(claims) > 0
 
-        # Delete the last claim in list
-        claim_to_delete = claims[-1]
-        claim_id = claim_to_delete["id"]
-
+        # Delete the dedicated claim
         del_res = await client.delete(
             f"/api/v1/admin/claims/{claim_id}",
             headers={"X-Admin-Key": settings.ADMIN_SECRET_KEY},

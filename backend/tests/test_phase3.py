@@ -1,4 +1,5 @@
 import time
+import uuid
 import pytest
 import httpx
 
@@ -52,7 +53,7 @@ async def test_verify_unverified_emergent_rumor():
     """Tests the new UNVERIFIED classification for uncorroborated, novel claims."""
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as client:
         payload = {
-            "text": "Local resident committee in Sector 9 Jaipur reported a private neighborhood gardening workshop scheduled for next Tuesday."
+            "text": f"Local resident committee in Sector 9 Jaipur reported a private neighborhood gardening workshop scheduled for next Tuesday {uuid.uuid4().hex[:6]}."
         }
         res = await client.post("/verify", json=payload)
         assert res.status_code == 200
