@@ -3,7 +3,15 @@ import re
 from typing import Dict, Any, List, Optional
 from urllib.parse import urlparse
 import httpx
-from duckduckgo_search import DDGS
+
+try:
+    from ddgs import DDGS
+except ImportError:
+    try:
+        from duckduckgo_search import DDGS
+    except ImportError:
+        DDGS = None
+
 from app.core.config import settings
 
 logger = logging.getLogger("verinews.evidence_retriever")
@@ -105,6 +113,9 @@ class EvidenceRetriever:
     @classmethod
     def _query_ddgs(cls, query: str, max_results: int = 3) -> List[Dict[str, str]]:
         """Queries DuckDuckGo search as a reliable, zero-cost fallback."""
+        if DDGS is None:
+            logger.warning("DDGS/duckduckgo_search library is not available, skipping web fallback")
+            return []
         results = []
         try:
             with DDGS() as ddgs:
