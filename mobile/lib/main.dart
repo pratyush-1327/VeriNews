@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'core/config.dart';
 import 'core/theme.dart';
 import 'services/api_service.dart';
 import 'services/share_intent_service.dart';
 import 'views/home_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load user configured backend URL if persisted
+  await AppConfig.loadSavedBaseUrl();
 
   // Initialize Native OS Share Intent listeners
   ShareIntentService().initShareListeners();

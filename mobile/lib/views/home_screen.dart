@@ -4,6 +4,7 @@ import '../core/config.dart';
 import '../services/api_service.dart';
 import '../services/share_intent_service.dart';
 import 'feed_view.dart';
+import 'server_config_screen.dart';
 import 'verify_view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -71,146 +72,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showServerConfigDialog() {
-    final controller = TextEditingController(text: AppConfig.baseUrl);
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        bool testing = false;
-        String? testMessage;
-        bool? testSuccess;
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Row(
-                children: [
-                  const Icon(Icons.dns_rounded, size: 22),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Backend Server URL',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Configure the FastAPI backend endpoint for live news and RAG verification:',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: controller,
-                      decoration: const InputDecoration(
-                        labelText: 'API Base URL',
-                        hintText: 'http://10.0.2.2:8000',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.link_rounded),
-                      ),
-                      keyboardType: TextInputType.url,
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ActionChip(
-                          label: const Text('10.0.2.2 (Emulator)'),
-                          onPressed: () {
-                            setDialogState(() {
-                              controller.text = 'http://10.0.2.2:8000';
-                            });
-                          },
-                        ),
-                        ActionChip(
-                          label: const Text('127.0.0.1 (USB)'),
-                          onPressed: () {
-                            setDialogState(() {
-                              controller.text = 'http://127.0.0.1:8000';
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    if (testing) ...[
-                      const SizedBox(height: 12),
-                      const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ] else if (testMessage != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            testSuccess == true
-                                ? Icons.check_circle_rounded
-                                : Icons.error_rounded,
-                            color: testSuccess == true ? Colors.green : Colors.red,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              testMessage!,
-                              style: TextStyle(
-                                color: testSuccess == true ? Colors.green : Colors.red,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
-                ),
-                OutlinedButton(
-                  onPressed: testing
-                      ? null
-                      : () async {
-                          setDialogState(() {
-                            testing = true;
-                            testMessage = null;
-                          });
-                          AppConfig.setCustomBaseUrl(controller.text);
-                          final ok = await widget.apiService.checkHealth();
-                          setDialogState(() {
-                            testing = false;
-                            testSuccess = ok;
-                            testMessage = ok
-                                ? 'Connected successfully (HTTP 200)'
-                                : 'Connection failed. Check server or IP.';
-                          });
-                          _checkBackendStatus();
-                        },
-                  child: const Text('Test'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    AppConfig.setCustomBaseUrl(controller.text);
-                    _checkBackendStatus();
-                    Navigator.of(ctx).pop();
-                  },
-                  child: const Text('Apply'),
-                ),
-              ],
-            );
+  void _openServerConfigScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => ServerConfigScreen(
+          apiService: widget.apiService,
+          onConfigChanged: () {
+            _checkBackendStatus();
           },
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -278,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Backend connectivity status dot & URL config
           InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: _showServerConfigDialog,
+            onTap: _openServerConfigScreen,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
@@ -321,6 +192,81 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             tooltip: 'Toggle Theme',
             onPressed: widget.onToggleTheme,
+          ),
+
+          // Three-dot overflow / hamburger menu
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            tooltip: 'Settings & Network',
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            onSelected: (value) async {
+              if (value == 'server_config') {
+                _openServerConfigScreen();
+              } else if (value == 'refresh_ping') {
+                await _checkBackendStatus();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      content: Text(
+                        _isBackendOnline
+                            ? 'Backend is Online (${AppConfig.baseUrl})'
+                            : 'Backend is Offline (${AppConfig.baseUrl})',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'server_config',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.dns_rounded,
+                      size: 20,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Configure Backend Server',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'refresh_ping',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.refresh_rounded,
+                      size: 20,
+                      color: theme.colorScheme.secondary,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Ping & Refresh Backend',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 4),
         ],

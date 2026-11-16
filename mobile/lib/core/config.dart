@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConfig {
   static const String appName = 'VeriNews';
   static const String appTagline = 'Trusted News & Evidence-Based Verification';
+  static const String defaultHostLanIp = '192.168.1.68';
+  static const String _storageKey = 'verinews_backend_url';
 
   /// Default API base URL auto-detection:
   /// - Android Emulator: 10.0.2.2:8000
@@ -24,8 +27,30 @@ class AppConfig {
     return 'http://localhost:8000';
   }
 
-  static void setCustomBaseUrl(String url) {
+  static Future<void> loadSavedBaseUrl() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_storageKey);
+      if (saved != null && saved.trim().isNotEmpty) {
+        _customBaseUrl = saved.trim().replaceAll(RegExp(r'/+$'), '');
+      }
+    } catch (e) {
+      debugPrint('[AppConfig] Error loading saved base URL: $e');
+    }
+  }
+
+  static Future<void> setCustomBaseUrl(String url) async {
     _customBaseUrl = url.trim().replaceAll(RegExp(r'/+$'), '');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_customBaseUrl.isEmpty) {
+        await prefs.remove(_storageKey);
+      } else {
+        await prefs.setString(_storageKey, _customBaseUrl);
+      }
+    } catch (e) {
+      debugPrint('[AppConfig] Error persisting base URL: $e');
+    }
   }
 
   /// 6 Supported City Hubs with official geo-coordinates
