@@ -71,6 +71,149 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showServerConfigDialog() {
+    final controller = TextEditingController(text: AppConfig.baseUrl);
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool testing = false;
+        String? testMessage;
+        bool? testSuccess;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  const Icon(Icons.dns_rounded, size: 22),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Backend Server URL',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Configure the FastAPI backend endpoint for live news and RAG verification:',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        labelText: 'API Base URL',
+                        hintText: 'http://10.0.2.2:8000',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.link_rounded),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ActionChip(
+                          label: const Text('10.0.2.2 (Emulator)'),
+                          onPressed: () {
+                            setDialogState(() {
+                              controller.text = 'http://10.0.2.2:8000';
+                            });
+                          },
+                        ),
+                        ActionChip(
+                          label: const Text('127.0.0.1 (USB)'),
+                          onPressed: () {
+                            setDialogState(() {
+                              controller.text = 'http://127.0.0.1:8000';
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    if (testing) ...[
+                      const SizedBox(height: 12),
+                      const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ] else if (testMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(
+                            testSuccess == true
+                                ? Icons.check_circle_rounded
+                                : Icons.error_rounded,
+                            color: testSuccess == true ? Colors.green : Colors.red,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              testMessage!,
+                              style: TextStyle(
+                                color: testSuccess == true ? Colors.green : Colors.red,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                OutlinedButton(
+                  onPressed: testing
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            testing = true;
+                            testMessage = null;
+                          });
+                          AppConfig.setCustomBaseUrl(controller.text);
+                          final ok = await widget.apiService.checkHealth();
+                          setDialogState(() {
+                            testing = false;
+                            testSuccess = ok;
+                            testMessage = ok
+                                ? 'Connected successfully (HTTP 200)'
+                                : 'Connection failed. Check server or IP.';
+                          });
+                          _checkBackendStatus();
+                        },
+                  child: const Text('Test'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    AppConfig.setCustomBaseUrl(controller.text);
+                    _checkBackendStatus();
+                    Navigator.of(ctx).pop();
+                  },
+                  child: const Text('Apply'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _onFactCheckRequestedFromFeed(String claimText) {
     setState(() => _currentIndex = 1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -132,19 +275,37 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          // Backend connectivity status dot
-          Tooltip(
-            message: _isBackendOnline ? 'Backend Online' : 'Backend Connecting...',
+          // Backend connectivity status dot & URL config
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: _showServerConfigDialog,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 children: [
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _isBackendOnline ? Colors.greenAccent[400] : Colors.amberAccent[400],
+                      boxShadow: [
+                        BoxShadow(
+                          color: (_isBackendOnline ? Colors.greenAccent : Colors.amberAccent)
+                              .withValues(alpha: 0.5),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _isBackendOnline ? 'Online' : 'Offline',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
